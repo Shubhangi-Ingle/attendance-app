@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --purple: #673AB7;
+    --purple-dark: #512DA8;
+    --purple-light: #f3edfb;
+    --text-main: #202124;
+    --text-sub: #5f6368;
+    --border: #dadce0;
+    --bg: #f0ebf8;
+    --error: #d93025;
+    --success: #188038;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #ede7f6 0%, #f0ebf8 220px);
+    font-family: 'Roboto', Arial, sans-serif;
+    padding: 0 0 60px;
+  }
+
+  .page-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(60,64,67,0.08);
+  }
+
+  .header-card {
+    border-top: 10px solid var(--purple);
+  }
+
+  .header-inner {
+    padding: 24px 24px 20px;
+  }
+
+  .header-inner h1 {
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text-main);
+    margin: 0 0 8px;
+  }
+
+  .header-inner p {
+    font-size: 14px;
+    color: var(--text-sub);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .form-card {
+    padding: 20px 24px 8px;
+  }
+
+  .field {
+    margin-bottom: 28px;
+  }
+
+  .field-label {
+    font-size: 14px;
+    color: var(--text-main);
+    margin-bottom: 10px;
+    font-weight: 400;
+  }
+
+  .required-star { color: var(--error); margin-left: 2px; }
+
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px 4px;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 15px;
+    color: var(--text-main);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-radius: 0;
+    transition: border-bottom-color 0.15s ease;
+  }
+
+  input[type="text"]:focus, select:focus {
+    outline: none;
+    border-bottom: 2px solid var(--purple);
+    padding-bottom: 9px;
+  }
+
+  input[type="text"].field-error, select.field-error {
+    border-bottom: 2px solid var(--error);
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'><path d='M1 1l6 6 6-6' stroke='%235f6368' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    padding-right: 24px;
+    cursor: pointer;
+  }
+
+  input[type="text"]::placeholder { color: #80868b; }
+
+  .capture-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--purple);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--purple);
+    font-family: 'Roboto', Arial, sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .capture-btn:hover { background: var(--purple-light); }
+  .capture-btn:active { background: #e8dcf8; }
+
+  #fileNameDisplay {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--success);
+    font-weight: 500;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .camera-frame {
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 3 / 4;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+  }
+
+  #video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* mirror view, feels natural like a mirror */
+  }
+
+  #previewImg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  #cameraBox, #previewBox { animation: fadeIn 0.2s ease; }
+
+  .footer-card {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .submit-btn:hover { background: var(--purple-dark); }
+  .submit-btn:active { background: var(--purple-dark); }
+  .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  #statusMsg {
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 16px;
+  }
+
+  #statusMsg.error { color: var(--error); }
+
+  /* ---- Success screen ---- */
+  .success-card {
+    padding: 48px 24px;
+    text-align: center;
+    animation: cardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .success-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #e6f4ea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .success-icon svg path {
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: drawCheck 0.35s ease-out 0.35s forwards;
+  }
+
+  @keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+  }
+
+  .success-card h2 {
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text-main);
+    margin: 0 0 8px;
+  }
+
+  .success-card p {
+    font-size: 14px;
+    color: var(--text-sub);
+    margin: 0 0 6px;
+    line-height: 1.5;
+  }
+
+  .success-detail {
+    font-size: 13px;
+    color: var(--text-sub);
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 16px auto 0;
+    display: inline-block;
+  }
+
+  .again-btn {
+    margin-top: 24px;
+    background: transparent;
+    color: var(--purple);
+    border: 1px solid var(--purple);
+    border-radius: 4px;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 10px 20px;
+    transition: background 0.15s ease;
+  }
+
+  .again-btn:hover { background: var(--purple-light); text-decoration: none; }
+  .again-btn:active { background: #e8dcf8; }
+
+  #formScreen.hidden, #successScreen.hidden { display: none; }
+
+  /* Mobile refinements */
+  @media (max-width: 480px) {
+    .page-wrap { padding: 0; }
+    .card { border-radius: 0; border-left: none; border-right: none; margin-bottom: 8px; }
+    .header-inner, .form-card, .footer-card, .success-card { padding-left: 18px; padding-right: 18px; }
+    .footer-card { flex-direction: column; align-items: stretch; gap: 14px; }
+    .submit-btn { width: 100%; padding: 13px; }
+    #statusMsg { text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="page-wrap">
+
+    <div id="formScreen">
+      <div class="card header-card">
+        <div class="header-inner">
+          <h1>Student Attendance</h1>
+          <p>Fill in your details and take a live photo to mark your attendance for today's class.</p>
+        </div>
+      </div>
+
+      <form id="attendanceForm">
+        <div class="card">
+          <div class="form-card">
+            <div class="field">
+              <div class="field-label">Student Name<span class="required-star">*</span></div>
+              <input type="text" id="name" name="name" placeholder="Your answer" required>
+            </div>
+
+            <div class="field">
+              <div class="field-label">Subject<span class="required-star">*</span></div>
+              <select id="subject" name="subject" required>
+                <option value="">Choose</option>
+                <option value="Full Stack development">Full Stack development</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Deveops/Azure/AWS">Deveops/Azure/AWS</option>
+                <option value="Cyber Security">Cyber Security</option>
+              </select>
+            </div>
+
+            <div class="field" style="margin-bottom: 8px;">
+              <div class="field-label">Photo<span class="required-star">*</span></div>
+
+              <button type="button" id="openCameraBtn" class="capture-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                Open Camera
+              </button>
+
+              <div id="cameraBox" style="display:none; margin-top:10px;">
+                <div class="camera-frame">
+                  <video id="video" autoplay playsinline></video>
+                </div>
+                <button type="button" id="captureBtn" class="capture-btn" style="margin-top:8px;">Capture Photo</button>
+              </div>
+
+              <canvas id="canvas" style="display:none;"></canvas>
+
+              <div id="previewBox" style="display:none; margin-top:10px;">
+                <div class="camera-frame">
+                  <img id="previewImg">
+                </div>
+                <button type="button" id="retakeBtn" class="capture-btn" style="margin-top:8px;">Retake Photo</button>
+              </div>
+
+              <div id="fileNameDisplay"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card footer-card">
+          <button type="submit" class="submit-btn" id="submitBtn">Submit</button>
+          <p id="statusMsg"></p>
+        </div>
+      </form>
+    </div>
+
+    <div id="successScreen" class="hidden">
+      <div class="card">
+        <div class="success-card">
+          <div class="success-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#188038" stroke-width="3">
+              <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2>Your response has been recorded</h2>
+          <p>Attendance marked successfully.</p>
+          <div class="success-detail" id="successDetail"></div>
+          <div>
+            <button type="button" class="again-btn" id="againBtn">Submit another response</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const formScreen = document.getElementById('formScreen');
+  const successScreen = document.getElementById('successScreen');
+  const successDetail = document.getElementById('successDetail');
+  const againBtn = document.getElementById('againBtn');
+
+  const form = document.getElementById('attendanceForm');
+  const nameInput = document.getElementById('name');
+  const subjectInput = document.getElementById('subject');
+  const fileNameDisplay = document.getElementById('fileNameDisplay');
+  const statusMsg = document.getElementById('statusMsg');
+  const submitBtn = document.getElementById('submitBtn');
+
+  const openCameraBtn = document.getElementById('openCameraBtn');
+  const cameraBox = document.getElementById('cameraBox');
+  const video = document.getElementById('video');
+  const captureBtn = document.getElementById('captureBtn');
+  const canvas = document.getElementById('canvas');
+  const previewBox = document.getElementById('previewBox');
+  const previewImg = document.getElementById('previewImg');
+  const retakeBtn = document.getElementById('retakeBtn');
+
+  let stream = null;
+  let capturedBlob = null;
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+      });
+      video.srcObject = stream;
+      cameraBox.style.display = 'block';
+      openCameraBtn.style.display = 'none';
+      previewBox.style.display = 'none';
+    } catch (err) {
+      statusMsg.className = 'error';
+      statusMsg.innerText = "Camera access denied or unavailable.";
+    }
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
+  }
+
+  openCameraBtn.addEventListener('click', startCamera);
+
+  captureBtn.addEventListener('click', function() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    // Mirror the captured frame to match the mirrored live preview
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(function(blob) {
+      capturedBlob = blob;
+      previewImg.src = URL.createObjectURL(blob);
+      previewBox.style.display = 'block';
+      cameraBox.style.display = 'none';
+      fileNameDisplay.innerHTML = "✓ Photo captured";
+      stopCamera();
+    }, 'image/jpeg', 0.9);
+  });
+
+  retakeBtn.addEventListener('click', function() {
+    capturedBlob = null;
+    fileNameDisplay.textContent = '';
+    openCameraBtn.style.display = 'flex';
+    previewBox.style.display = 'none';
+    startCamera();
+  });
+
+  function resetForm() {
+    form.reset();
+    fileNameDisplay.textContent = '';
+    capturedBlob = null;
+    previewBox.style.display = 'none';
+    cameraBox.style.display = 'none';
+    openCameraBtn.style.display = 'flex';
+    statusMsg.className = '';
+    statusMsg.innerText = '';
+    nameInput.classList.remove('field-error');
+    subjectInput.classList.remove('field-error');
+    stopCamera();
+  }
+
+  function showSuccessScreen(name, subject) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    successDetail.textContent = `${name} · ${subject} · ${timeStr}`;
+    formScreen.classList.add('hidden');
+    successScreen.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  againBtn.addEventListener('click', function() {
+    resetForm();
+    successScreen.classList.add('hidden');
+    formScreen.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    let hasError = false;
+    if (!nameInput.value.trim()) {
+      nameInput.classList.add('field-error');
+      hasError = true;
+    }
+    if (!subjectInput.value) {
+      subjectInput.classList.add('field-error');
+      hasError = true;
+    }
+    if (!capturedBlob) {
+      statusMsg.className = 'error';
+      statusMsg.innerText = "Please capture a photo first.";
+      hasError = true;
+    }
+    if (hasError) return;
+
+    const submittedName = nameInput.value.trim();
+    const submittedSubject = subjectInput.value;
+
+    const formData = new FormData();
+    formData.append('name', submittedName);
+    formData.append('subject', submittedSubject);
+    formData.append('photo', capturedBlob, 'capture.jpg');
+
+    statusMsg.className = '';
+    statusMsg.innerText = '';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+    try {
+      const response = await fetch('/submit', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        showSuccessScreen(submittedName, submittedSubject);
+      } else {
+        statusMsg.className = 'error';
+        statusMsg.innerText = "Something went wrong. Try again.";
+      }
+    } catch (err) {
+      statusMsg.className = 'error';
+      statusMsg.innerText = "Error: " + err.message;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit';
+    }
+  });
+
+  nameInput.addEventListener('input', () => nameInput.classList.remove('field-error'));
+  subjectInput.addEventListener('change', () => subjectInput.classList.remove('field-error'));
+</script>
+</body>
+</html>
