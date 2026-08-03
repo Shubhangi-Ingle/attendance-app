@@ -3,13 +3,14 @@ from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
 from openpyxl import Workbook
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
 app = FastAPI()
 
 EXCEL_FILE = "attendance.xlsx"
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # ---- Google Sheets setup ----
 GOOGLE_SHEET_ID = "1EwFrEzfHCDy1rNNRGBhWoFV4_Gxfw8D8p360eTBvDhU"
@@ -46,8 +47,8 @@ async def submit_attendance(
     subject: str = Form(...),
     photo: UploadFile = File(...)
 ):
-    # Server-side date & time (trustworthy, not from student's phone)
-    now = datetime.now()
+    # Use IST regardless of the server's own timezone (Render runs in UTC)
+    now = datetime.now(IST)
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M:%S")
 
