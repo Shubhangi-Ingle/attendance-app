@@ -37,12 +37,33 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-def get_google_sheet():
-    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
-    return sheet
+def get_google_sheet(subject):
+    creds = Credentials.from_service_account_file(
+        CREDENTIALS_FILE,
+        scopes=SCOPES
+    )
 
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_key(GOOGLE_SHEET_ID)
+
+    try:
+        sheet = spreadsheet.worksheet(subject)
+    except gspread.WorksheetNotFound:
+        sheet = spreadsheet.add_worksheet(
+            title=subject,
+            rows=1000,
+            cols=10
+        )
+
+        sheet.append_row([
+            "Name",
+            "Subject",
+            "Date",
+            "Time",
+            "Photo"
+        ])
+
+    return sheet
 def upload_photo_to_cloudinary(content: bytes, filename: str) -> str:
     """Uploads photo bytes to Cloudinary, returns the secure URL."""
     try:
@@ -118,7 +139,7 @@ async def submit_attendance(
 
     # Also write the same row into the live Google Sheet
     try:
-        sheet = get_google_sheet()
+        sheet = get_google_sheet(subject)
         # Check if the sheet is empty or only contains headers
         all_values = sheet.get_all_values()
         if not all_values or (len(all_values) == 1 and all_values[0] == ["Name", "Subject", "Date", "Time", "Photo"]):
