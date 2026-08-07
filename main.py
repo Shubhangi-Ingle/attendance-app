@@ -20,7 +20,7 @@ EXCEL_FILE = "attendance.xlsx"
 IST = timezone(timedelta(hours=5, minutes=30))
 
 # ---- Teacher QR session setup ----
-TEACHER_PASSWORD = "shubhangi123"   # <-- change this to your own password
+TEACHER_PASSWORD = "Cubeage123"   # <-- change this to your own password
 SESSION_FILE = "session.json"
 # Set this to your live Render URL
 BASE_URL = "https://attendance-app-vghw.onrender.com"
