@@ -308,7 +308,7 @@
   .again-btn:hover { background: var(--purple-light); text-decoration: none; }
   .again-btn:active { background: #e8dcf8; }
 
-  #formScreen.hidden, #successScreen.hidden { display: none; }
+  #formScreen.hidden, #successScreen.hidden, #blockedScreen.hidden { display: none; }
 
   /* Mobile refinements */
   @media (max-width: 480px) {
@@ -409,9 +409,27 @@
       </div>
     </div>
 
+    <div id="blockedScreen" class="hidden">
+      <div class="card">
+        <div class="success-card">
+          <div class="success-icon" style="background:#fce8e6;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#c5221f" stroke-width="3">
+              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 id="blockedTitle">This code has expired</h2>
+          <p id="blockedMessage">Please scan the current QR code shown by your teacher.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <script>
+  const blockedScreen = document.getElementById('blockedScreen');
+  const blockedTitle = document.getElementById('blockedTitle');
+  const blockedMessage = document.getElementById('blockedMessage');
+
   const formScreen = document.getElementById('formScreen');
   const successScreen = document.getElementById('successScreen');
   const successDetail = document.getElementById('successDetail');
@@ -543,6 +561,7 @@
     const formData = new FormData();
     formData.append('name', submittedName);
     formData.append('subject', submittedSubject);
+    formData.append('session', sessionToken || '');
     formData.append('photo', capturedBlob, 'capture.jpg');
 
     statusMsg.className = '';
@@ -559,8 +578,9 @@
       if (response.ok) {
         showSuccessScreen(submittedName, submittedSubject);
       } else {
+        const data = await response.json().catch(() => ({}));
         statusMsg.className = 'error';
-        statusMsg.innerText = "Something went wrong. Try again.";
+        statusMsg.innerText = data.message || "Something went wrong. Try again.";
       }
     } catch (err) {
       statusMsg.className = 'error';
@@ -573,6 +593,41 @@
 
   nameInput.addEventListener('input', () => nameInput.classList.remove('field-error'));
   subjectInput.addEventListener('change', () => subjectInput.classList.remove('field-error'));
+
+  // ---- Session (time-limited QR) validation ----
+  const sessionToken = new URLSearchParams(window.location.search).get('session');
+
+  function showBlocked(title, message) {
+    formScreen.classList.add('hidden');
+    successScreen.classList.add('hidden');
+    blockedScreen.classList.remove('hidden');
+    blockedTitle.textContent = title;
+    blockedMessage.textContent = message;
+  }
+
+  if (!sessionToken) {
+    showBlocked(
+      "No attendance code found",
+      "Please scan the QR code shown by your teacher to mark attendance."
+    );
+  } else {
+    fetch('/api/validate-session?token=' + encodeURIComponent(sessionToken))
+      .then(res => res.json())
+      .then(data => {
+        if (!data.valid) {
+          showBlocked(
+            "This code has expired",
+            data.message || "Please scan the current QR code shown by your teacher."
+          );
+        }
+      })
+      .catch(() => {
+        showBlocked(
+          "Couldn't verify this code",
+          "Please check your connection and rescan the QR code."
+        );
+      });
+  }
 </script>
 </body>
 </html>

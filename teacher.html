@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher - Generate Attendance QR</title>
+<style>
+  :root {
+    --purple: #673ab7;
+    --purple-light: #f3e8fd;
+    --border: #dadce0;
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #ede7f6 0%, #f0ebf8 220px);
+    font-family: 'Roboto', Arial, sans-serif;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 440px; margin: 0 auto; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(60,64,67,0.08);
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; color: var(--text-primary); text-align:center; }
+  p.sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 20px; text-align:center; }
+  label { display:block; font-size: 13px; color: var(--text-primary); margin-bottom: 6px; margin-top: 16px; font-weight: 500; }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .duration-row { display: flex; gap: 8px; }
+  .duration-row input { flex: 1; }
+  .duration-row select { flex: 1; }
+  button.primary {
+    margin-top: 22px;
+    width: 100%;
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button.primary:hover { background: #5e35b1; }
+  button.primary:disabled { opacity: 0.6; cursor: default; }
+  button.secondary {
+    margin-top: 16px;
+    width: 100%;
+    background: #fff;
+    color: var(--purple);
+    border: 1px solid var(--purple);
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button.secondary:hover { background: var(--purple-light); }
+  #errorMsg { color: #c5221f; font-size: 13px; margin-top: 12px; }
+  #resultCard { display: none; text-align: center; }
+  #qrCanvas { width: 100%; max-width: 300px; border-radius: 8px; margin: 12px auto; display:block; }
+  #timerText { font-size:18px; font-weight:600; color:var(--purple); margin-top:8px; }
+  #expiryText { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  #statusNote { font-size:12px; color:var(--text-secondary); margin-bottom:8px; }
+  #linkBox {
+    word-break: break-all;
+    font-size: 12px;
+    background: #f8f9fa;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 12px;
+    color: var(--text-secondary);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Generate Attendance QR</h1>
+      <p class="sub">Create a fresh, time-limited QR code for class.</p>
+
+      <label for="password">Teacher Password</label>
+      <input type="password" id="password" placeholder="Enter password">
+
+      <label for="durationValue">Valid For</label>
+      <div class="duration-row">
+        <input type="number" id="durationValue" min="1" value="24">
+        <select id="durationUnit">
+          <option value="hours" selected>Hours</option>
+          <option value="minutes">Minutes</option>
+        </select>
+      </div>
+
+      <button class="primary" id="generateBtn">Generate QR Code</button>
+      <div id="errorMsg"></div>
+    </div>
+
+    <div class="card" id="resultCard">
+      <div id="statusNote"></div>
+      <h1>Mark Your Attendance!</h1>
+      <canvas id="qrCanvas"></canvas>
+      <div id="timerText"></div>
+      <div id="expiryText"></div>
+      <div id="linkBox"></div>
+      <button class="secondary" id="downloadBtn" type="button">Download QR Code</button>
+    </div>
+  </div>
+
+<script>
+  const generateBtn = document.getElementById('generateBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const resultCard = document.getElementById('resultCard');
+  const statusNote = document.getElementById('statusNote');
+  const qrCanvas = document.getElementById('qrCanvas');
+  const timerText = document.getElementById('timerText');
+  const expiryText = document.getElementById('expiryText');
+  const linkBox = document.getElementById('linkBox');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let countdownInterval = null;
+
+  function startCountdown(expiresAtIso) {
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    function update() {
+      const remainingMs = new Date(expiresAtIso).getTime() - Date.now();
+      if (remainingMs <= 0) {
+        timerText.textContent = 'Expired';
+        timerText.style.color = '#c5221f';
+        clearInterval(countdownInterval);
+        return;
+      }
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      timerText.textContent =
+        `Valid for ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+    update();
+    countdownInterval = setInterval(update, 1000);
+  }
+
+  // Draws the QR code plus a designed banner onto the canvas (used both for
+  // display and for the downloaded PNG so they always match).
+ function drawDesignedQr(qrImg) {
+    const width = 500;
+    const qrSize = 420;
+    const topPad = 40;
+    const textHeight = 100;
+    const height = topPad + qrSize + textHeight;
+
+    qrCanvas.width = width;
+    qrCanvas.height = height;
+    const ctx = qrCanvas.getContext('2d');
+
+    // Plain white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    // QR image
+    ctx.drawImage(qrImg, width/2 - qrSize/2, topPad, qrSize, qrSize);
+
+    // Caption below
+    ctx.fillStyle = '#111111';
+    ctx.textAlign = 'center';
+    ctx.font = '600 40px Arial';
+    ctx.fillText('Mark your attendance !', width/2, topPad + qrSize + 65);
+  }
+  function displayResult(data, note) {
+    statusNote.textContent = note;
+    expiryText.textContent = 'Expires at ' + data.expires_at_readable;
+    linkBox.textContent = data.attendance_url;
+    resultCard.style.display = 'block';
+
+    const qrImg = new Image();
+    qrImg.crossOrigin = 'anonymous';
+    qrImg.onload = () => drawDesignedQr(qrImg);
+    qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodeURIComponent(data.attendance_url);
+
+    startCountdown(data.expires_at);
+  }
+
+  // On page load, check if a QR is already active (generated earlier by any teacher)
+  fetch('/api/current-session')
+    .then(res => res.json())
+    .then(data => {
+      if (data.active) {
+        displayResult(data, 'A QR code is already active right now:');
+      }
+    })
+    .catch(() => {});
+
+  downloadBtn.addEventListener('click', function() {
+    const url = qrCanvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'attendance-qr.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  generateBtn.addEventListener('click', async function() {
+    errorMsg.textContent = '';
+    const password = document.getElementById('password').value;
+    const durationValue = parseFloat(document.getElementById('durationValue').value);
+    const durationUnit = document.getElementById('durationUnit').value;
+
+    if (!password) {
+      errorMsg.textContent = 'Please enter the teacher password.';
+      return;
+    }
+    if (!durationValue || durationValue <= 0) {
+      errorMsg.textContent = 'Please enter a valid duration.';
+      return;
+    }
+
+    const duration_hours = durationUnit === 'minutes' ? durationValue / 60 : durationValue;
+
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Generating...';
+
+    try {
+      const res = await fetch('/api/generate-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, duration_hours })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorMsg.textContent = data.message || 'Something went wrong.';
+        return;
+      }
+
+      displayResult(data, 'You just generated this QR code:');
+    } catch (err) {
+      errorMsg.textContent = 'Error: ' + err.message;
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate QR Code';
+    }
+  });
+</script>
+</body>
+</html>
