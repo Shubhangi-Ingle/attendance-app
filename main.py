@@ -21,22 +21,8 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 # ---- Teacher QR session setup ----
 TEACHER_PASSWORD = "Cubeage123"   # <-- change this to your own password
-SESSION_FILE = "session.json"
 # Set this to your live Render URL
 BASE_URL = "https://attendance-app-vghw.onrender.com"
-
-def save_session(token, expires_at):
-    with open(SESSION_FILE, "w") as f:
-        json.dump({
-            "token": token,
-            "expires_at": expires_at.isoformat()
-        }, f)
-
-def load_session():
-    if not os.path.exists(SESSION_FILE):
-        return None
-    with open(SESSION_FILE, "r") as f:
-        return json.load(f)
 
 # ---- Google Sheets & Drive setup ----
 GOOGLE_SHEET_ID = "1EwFrEzfHCDy1rNNRGBhWoFV4_Gxfw8D8p360eTBvDhU"
@@ -86,6 +72,34 @@ def get_google_sheet(subject):
 
     return sheet
 
+# ---- QR session storage (kept in a hidden tab of the same Google Sheet,
+# so it survives Render restarting/wiping its local disk) ----
+def get_session_worksheet():
+    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_key(GOOGLE_SHEET_ID)
+    try:
+        sheet = spreadsheet.worksheet("Session")
+    except gspread.WorksheetNotFound:
+        sheet = spreadsheet.add_worksheet(title="Session", rows=2, cols=2)
+        sheet.update(range_name="A1", values=[["token", "expires_at"]])
+    return sheet
+
+def save_session(token, expires_at):
+    sheet = get_session_worksheet()
+    sheet.update(range_name="A2", values=[[token, expires_at.isoformat()]])
+
+def load_session():
+    try:
+        sheet = get_session_worksheet()
+        values = sheet.get_all_values()
+        if len(values) < 2 or not values[1] or not values[1][0]:
+            return None
+        return {"token": values[1][0], "expires_at": values[1][1]}
+    except Exception as e:
+        print("Session load failed:", e)
+        return None
+
 def upload_photo_to_cloudinary(content: bytes, filename: str) -> str:
     """Uploads photo bytes to Cloudinary, returns the secure URL."""
     try:
@@ -114,14 +128,6 @@ async def generate_session(request: Request):
 
     if password != TEACHER_PASSWORD:
         return JSONResponse({"message": "Incorrect password"}, status_code=401)
-
-    existing = load_session()
-    if existing:
-        existing_expiry = datetime.fromisoformat(existing["expires_at"])
-        if datetime.now(IST) < existing_expiry:
-            return JSONResponse({
-                "message": f"A QR code is already active until {existing_expiry.strftime('%I:%M %p, %d %b %Y')}. Please wait until it expires before generating a new one."
-            }, status_code=400)
 
     try:
         duration_hours = float(duration_hours)
